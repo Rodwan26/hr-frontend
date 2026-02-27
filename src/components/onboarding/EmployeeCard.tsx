@@ -1,0 +1,85 @@
+import Link from 'next/link'
+import type { OnboardingEmployee } from '@/services/onboardingService'
+
+function statusBadge(status: OnboardingEmployee['status']) {
+  switch (status) {
+    case 'completed':
+      return 'bg-green-100 text-green-800'
+    case 'in_progress':
+      return 'bg-indigo-100 text-indigo-800'
+    default:
+      return 'bg-yellow-100 text-yellow-800'
+  }
+}
+
+export function EmployeeCard({
+  employee,
+  onDelete,
+  onSelect,
+  selected = false,
+}: {
+  employee: OnboardingEmployee
+  onDelete: (id: number) => void
+  onSelect?: (id: number, selected: boolean) => void
+  selected?: boolean
+}) {
+  return (
+    <div className={`bg-white rounded-xl shadow border p-5 flex flex-col gap-4 transition-all ${selected ? 'border-indigo-500 ring-2 ring-indigo-200' : 'border-gray-100'}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex gap-3 min-w-0">
+          {onSelect && (
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={(e) => onSelect(employee.id, e.target.checked)}
+              className="mt-1 w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+          )}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-gray-800 truncate">{employee.employee_name}</h3>
+              <span className={`text-xs px-2 py-1 rounded-full font-semibold ${statusBadge(employee.status)}`}>
+                {employee.status.replace('_', ' ')}
+              </span>
+            </div>
+            <p className="text-sm text-gray-600 truncate">{employee.employee_email}</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {employee.position} • {employee.department}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">Start: {new Date(employee.start_date).toLocaleDateString()}</p>
+          </div>
+        </div>
+
+        <div className="text-right shrink-0">
+          <div className="text-2xl font-extrabold text-indigo-700">{employee.completion_percentage}%</div>
+          <div className="text-xs text-gray-500">complete</div>
+        </div>
+      </div>
+
+      <div className="w-full bg-gray-200 rounded-full h-2">
+        <div
+          className="bg-indigo-600 h-2 rounded-full transition-all"
+          style={{ width: `${Math.min(100, Math.max(0, employee.completion_percentage))}%` }}
+        />
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex gap-2">
+          <Link
+            href={`/onboarding/${employee.id}`}
+            className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
+          >
+            View
+          </Link>
+          <button
+            onClick={() => onDelete(employee.id)}
+            className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
