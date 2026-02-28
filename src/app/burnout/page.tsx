@@ -1,30 +1,14 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { wellbeingService } from '@/services/wellbeingService'
-// Internal types for the page
-interface BurnoutAssessment {
-    support_priority: string;
-    ai_analysis: string;
-    recommendations: string[];
-    indicators: string[];
-}
-interface PerformanceMetric {
-    id: number;
-    metric_type: string;
-    value: number;
-    date: string;
-}
+import { burnoutService, BurnoutAssessment, PerformanceMetric, BurnoutDashboard } from '@/services/burnoutService'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 export default function BurnoutPage() {
     const [employeeId, setEmployeeId] = useState<number>(1)
     const [loading, setLoading] = useState(false)
     const [analyzing, setAnalyzing] = useState(false)
-    const [dashboardData, setDashboardData] = useState<{
-        assessment: BurnoutAssessment | null
-        metrics: PerformanceMetric[]
-    } | null>(null)
+    const [dashboardData, setDashboardData] = useState<BurnoutDashboard | null>(null)
 
     // Form state
     const [hours, setHours] = useState('')
@@ -34,7 +18,7 @@ export default function BurnoutPage() {
         console.log("Loading data for employee:", employeeId)
         setLoading(true)
         try {
-            const data = await wellbeingService.getDashboard(employeeId)
+            const data = await burnoutService.getDashboard(employeeId)
             console.log("Data loaded:", data)
             setDashboardData(data)
         } catch (e) {
@@ -49,7 +33,7 @@ export default function BurnoutPage() {
     const handleLogHours = async (e: React.FormEvent) => {
         e.preventDefault()
         try {
-            await wellbeingService.trackMetric({
+            await burnoutService.trackMetric({
                 employee_id: employeeId,
                 metric_type: 'work_hours',
                 value: parseFloat(hours),
@@ -66,9 +50,9 @@ export default function BurnoutPage() {
     const handleAnalyze = async () => {
         setAnalyzing(true)
         try {
-            const result = await wellbeingService.analyzeBurnout(employeeId)
+            const result = await burnoutService.analyzeBurnout(employeeId)
             console.log("Analysis result:", result)
-            // Update local state immediately with the result
+            // Optimistic UI: merge result into existing state while re-fetch happens
             setDashboardData(prev => prev ? { ...prev, assessment: result } : { assessment: result, metrics: [] })
             await loadData()
         } catch (e) {
@@ -94,6 +78,16 @@ export default function BurnoutPage() {
             default: return 'bg-gray-100 text-gray-800'
         }
     }
+
+    // Map backend field names to display fields
+    const assessmentDisplay = dashboardData?.assessment
+        ? {
+            support_priority: dashboardData.assessment.risk_level,
+            ai_analysis: dashboardData.assessment.ai_analysis,
+            recommendations: dashboardData.assessment.recommendations,
+            indicators: dashboardData.assessment.indicators,
+        }
+        : null
 
     // Prepare chart data
     const chartData = dashboardData?.metrics
@@ -156,20 +150,20 @@ export default function BurnoutPage() {
                     <div className="bg-white shadow rounded-lg p-6 border-l-4 border-purple-500">
                         <div className="flex justify-between items-start">
                             <h2 className="text-lg font-medium text-gray-900">AI Risk Assessment</h2>
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getRiskColor(dashboardData?.assessment?.support_priority || 'unknown')}`}>
-                                {dashboardData?.assessment?.support_priority?.toUpperCase() || 'UNKNOWN'}
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getRiskColor(assessmentDisplay?.support_priority || 'unknown')}`}>
+                                {assessmentDisplay?.support_priority?.toUpperCase() || 'UNKNOWN'}
                             </span>
                         </div>
 
                         <div className="mt-4 prose prose-sm text-gray-500">
-                            <p className="whitespace-pre-wrap">{dashboardData?.assessment?.ai_analysis || "No analysis available. Click 'Run AI Analysis' to generate."}</p>
+                            <p className="whitespace-pre-wrap">{assessmentDisplay?.ai_analysis || "No analysis available. Click 'Run AI Analysis' to generate."}</p>
                         </div>
 
-                        {dashboardData?.assessment?.recommendations && (
+                        {assessmentDisplay?.recommendations && (
                             <div className="mt-4">
                                 <h3 className="text-sm font-medium text-gray-900">Recommendations:</h3>
                                 <ul className="mt-2 list-disc list-inside text-sm text-gray-600">
-                                    {dashboardData.assessment.recommendations.map((rec: string, i: number) => (
+                                    {assessmentDisplay.recommendations.map((rec: string, i: number) => (
                                         <li key={i}>{rec}</li>
                                     ))}
                                 </ul>
@@ -263,9 +257,9 @@ export default function BurnoutPage() {
                     {/* Quick Stats */}
                     <div className="bg-white shadow rounded-lg p-6">
                         <h2 className="text-lg font-medium text-gray-900 mb-4">Warning Signs</h2>
-                        {dashboardData?.assessment?.indicators && dashboardData.assessment.indicators.length > 0 ? (
+                        {assessmentDisplay?.indicators && assessmentDisplay.indicators.length > 0 ? (
                             <ul className="space-y-2">
-                                {dashboardData.assessment.indicators.map((sign: string, i: number) => (
+                                {assessmentDisplay.indicators.map((sign: string, i: number) => (
                                     <li key={i} className="flex items-start text-sm text-gray-600">
                                         <span className="text-red-500 mr-2">⚠️</span>
                                         {sign}
