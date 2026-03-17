@@ -25,7 +25,6 @@ export default function SetupPage() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [checkingStatus, setCheckingStatus] = useState(true);
-    const [isInitialized, setIsInitialized] = useState(false);
     const router = useRouter();
 
     const methods = useForm<SetupData>({
@@ -38,12 +37,15 @@ export default function SetupPage() {
         },
     });
 
-    // Proactive check: If system is already initialized, show reset option
+    // Check if system is already initialized
     React.useEffect(() => {
         const checkStatus = async () => {
             try {
                 const status = await setupService.checkStatus();
-                setIsInitialized(status.initialized);
+                if (status.initialized) {
+                    // If system already has organization, redirect to login
+                    router.push('/login?message=System already initialized. Please login.');
+                }
             } catch (err) {
                 console.error('Failed to check setup status:', err);
             } finally {
@@ -53,29 +55,13 @@ export default function SetupPage() {
         checkStatus();
     }, [router]);
 
-    const handleReset = async () => {
-        if (!confirm('WARNING: This will delete ALL data! Are you sure?')) {
-            return;
-        }
-        setLoading(true);
-        try {
-            await setupService.reset();
-            window.location.reload();
-        } catch (err: any) {
-            setError(err.response?.data?.detail || 'Failed to reset system');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const onSubmit = async (data: SetupData) => {
         setLoading(true);
         setError(null);
         try {
-            // Transform data to match SetupPayload (backend schema)
             const payload = {
                 organization_name: data.organization_name,
-                admin_name: data.admin_email.split('@')[0], // Default name from email
+                admin_name: data.admin_email.split('@')[0],
                 admin_email: data.admin_email,
                 password: data.admin_password,
             };
@@ -85,7 +71,7 @@ export default function SetupPage() {
         } catch (err: any) {
             const detail = err.response?.data?.detail;
             if (err.response?.status === 400 && detail?.includes('already initialized')) {
-                setError('The system is already initialized. You can proceed to the login page.');
+                router.push('/login?message=System already initialized. Please login.');
             } else {
                 setError(detail || 'Failed to initialize system. Please try again.');
             }
@@ -98,57 +84,6 @@ export default function SetupPage() {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-            </div>
-        );
-    }
-
-    // Show reset option if system is already initialized
-    if (isInitialized) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-                <div className="w-full max-w-xl">
-                    <div className="text-center mb-8">
-                        <h1 className="text-4xl font-black text-gray-900 tracking-tight">System Already Initialized</h1>
-                        <p className="text-gray-500 mt-2 font-medium italic">
-                            A system already exists. You can login or reset to start fresh.
-                        </p>
-                    </div>
-
-                    <Card>
-                        <div className="text-center space-y-4">
-                            <Alert variant="warning" title="Warning">
-                                The system is already initialized with an organization and admin account.
-                            </Alert>
-                            
-                            <p className="text-gray-600">
-                                To access the system, please login with your admin credentials.
-                            </p>
-                            
-                            <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
-                                <Button
-                                    type="button"
-                                    onClick={() => router.push('/login')}
-                                    variant="primary"
-                                >
-                                    Go to Login
-                                </Button>
-                                
-                                <Button
-                                    type="button"
-                                    onClick={handleReset}
-                                    variant="danger"
-                                    disabled={loading}
-                                >
-                                    {loading ? 'Resetting...' : 'Reset System (Delete All Data)'}
-                                </Button>
-                            </div>
-                            
-                            <p className="text-xs text-gray-400 pt-4">
-                                WARNING: Resetting will delete ALL organizations, users, employees, and data!
-                            </p>
-                        </div>
-                    </Card>
-                </div>
             </div>
         );
     }

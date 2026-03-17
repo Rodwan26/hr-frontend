@@ -15,8 +15,11 @@ import {
     ShieldCheckIcon,
     SwatchIcon,
     MoonIcon,
-    SunIcon
+    SunIcon,
+    ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
+import api from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
 const settingsSections = [
     { id: 'account', name: 'الحساب الشخصي', icon: UserIcon },
@@ -26,12 +29,22 @@ const settingsSections = [
 ];
 
 export default function SettingsPage() {
-    const { user, setAuth } = useAuthStore();
+    const { user, setAuth, logout } = useAuthStore();
+    const router = useRouter();
     const [activeSection, setActiveSection] = useState('account');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [resetLoading, setResetLoading] = useState(false);
 
-    // Profile State
+    // Check if user is admin
+    const isAdmin = user?.role === 'HR_ADMIN' || user?.role === 'HR_MANAGER' || user?.role === 'SUPER_ADMIN';
+
+    // Add system section for admins
+    const allSections = isAdmin 
+        ? [...settingsSections, { id: 'system', name: 'إعدادات النظام', icon: ExclamationTriangleIcon }]
+        : settingsSections;
+
+    // Password State
     const [email, setEmail] = useState(user?.email || '');
     const [displayName, setDisplayName] = useState(user?.full_name || user?.email.split('@')[0] || '');
 
@@ -91,6 +104,28 @@ export default function SettingsPage() {
         }
     };
 
+    const handleResetOrganization = async () => {
+        if (!confirm('⚠️ تحذير: هذا الإجراء سيحذف جميع بيانات الشركة نهائياً!\n\nهل أنت متأكد من المتابعة؟')) {
+            return;
+        }
+        
+        if (!confirm('⚠️最后一次确认：所有员工、部门、招聘、工资数据都将被永久删除！\n\n هل تريد المتابعة؟')) {
+            return;
+        }
+
+        setResetLoading(true);
+        try {
+            await api.delete('/admin/reset/organization');
+            alert('تم إعادة تعيين بيانات الشركة بنجاح');
+            logout();
+            router.push('/login?message=تم إعادة تعيين البيانات. يرجى تسجيل الدخول مرة أخرى');
+        } catch (err: any) {
+            alert(err.response?.data?.detail || 'فشل إعادة تعيين البيانات');
+        } finally {
+            setResetLoading(false);
+        }
+    };
+
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex flex-col gap-1">
@@ -107,7 +142,7 @@ export default function SettingsPage() {
             <div className="flex flex-col lg:flex-row gap-8">
                 {/* Navigation Sidebar */}
                 <aside className="lg:w-64 space-y-2">
-                    {settingsSections.map((section) => (
+                    {allSections.map((section) => (
                         <button
                             key={section.id}
                             onClick={() => { setActiveSection(section.id); setMessage(null); }}
@@ -264,6 +299,46 @@ export default function SettingsPage() {
                                         <p className="text-xs text-gray-500 font-medium">مريح للعين في الإضاءة الخافتة</p>
                                     </div>
                                 </button>
+                            </div>
+                        </Card>
+                    )}
+
+                    {activeSection === 'system' && isAdmin && (
+                        <Card className="border-none shadow-2xl shadow-gray-200/50" title="إعدادات النظام" subtitle="خيارات متقدمة للمسؤولين فقط.">
+                            <div className="space-y-6 mt-6">
+                                <div className="bg-red-50 p-6 rounded-3xl border border-red-100">
+                                    <div className="flex items-start gap-4">
+                                        <ExclamationTriangleIcon className="w-8 h-8 text-red-500 flex-shrink-0" />
+                                        <div className="space-y-2">
+                                            <p className="font-bold text-red-900">خطر: إعادة تعيين بيانات الشركة</p>
+                                            <p className="text-sm text-red-600 font-medium">
+                                                هذا الإجراء سيحذف جميع بيانات الشركة نهائياً بما في ذلك:
+                                            </p>
+                                            <ul className="text-sm text-red-600 list-disc list-inside space-y-1">
+                                                <li>جميع الموظفين</li>
+                                                <li>جميع الأقسام</li>
+                                                <li>جميع الوظائف والسير الذاتية</li>
+                                                <li>جميع طلبات الإجازات</li>
+                                                <li>جميع بيانات الرواتب</li>
+                                            </ul>
+                                            <p className="text-sm text-red-600 font-medium pt-2">
+                                                <strong>لا يمكن التراجع عن هذا الإجراء!</strong>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mt-6 pt-4 border-t border-red-200">
+                                        <Button 
+                                            type="button"
+                                            variant="danger"
+                                            onClick={handleResetOrganization}
+                                            loading={resetLoading}
+                                            className="w-full"
+                                        >
+                                            {resetLoading ? 'جاري الحذف...' : 'حذف جميع بيانات الشركة'}
+                                        </Button>
+                                    </div>
+                                </div>
                             </div>
                         </Card>
                     )}
