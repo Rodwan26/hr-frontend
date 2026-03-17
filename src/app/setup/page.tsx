@@ -25,6 +25,7 @@ export default function SetupPage() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [checkingStatus, setCheckingStatus] = useState(true);
+    const [organizationsCount, setOrganizationsCount] = useState(0);
     const router = useRouter();
 
     const methods = useForm<SetupData>({
@@ -37,15 +38,12 @@ export default function SetupPage() {
         },
     });
 
-    // Check if system is already initialized
+    // Check system status - allow viewing page always
     React.useEffect(() => {
         const checkStatus = async () => {
             try {
                 const status = await setupService.checkStatus();
-                if (status.initialized) {
-                    // If system already has organization, redirect to login
-                    router.push('/login?message=System already initialized. Please login.');
-                }
+                setOrganizationsCount(status.organizations_count || 0);
             } catch (err) {
                 console.error('Failed to check setup status:', err);
             } finally {
@@ -53,7 +51,7 @@ export default function SetupPage() {
             }
         };
         checkStatus();
-    }, [router]);
+    }, []);
 
     const onSubmit = async (data: SetupData) => {
         setLoading(true);
@@ -66,15 +64,11 @@ export default function SetupPage() {
                 password: data.admin_password,
             };
 
-            await setupService.initialize(payload);
-            router.push('/login?message=System initialized successfully. Please login.');
+            const response = await setupService.initialize(payload);
+            router.push(`/login?message=Organization '${response.organization_name}' created successfully! Please login.`);
         } catch (err: any) {
             const detail = err.response?.data?.detail;
-            if (err.response?.status === 400 && detail?.includes('already initialized')) {
-                router.push('/login?message=System already initialized. Please login.');
-            } else {
-                setError(detail || 'Failed to initialize system. Please try again.');
-            }
+            setError(detail || 'Failed to create organization. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -92,14 +86,35 @@ export default function SetupPage() {
         <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
             <div className="w-full max-w-xl">
                 <div className="text-center mb-8">
-                    <h1 className="text-4xl font-black text-gray-900 tracking-tight">System Setup</h1>
-                    <p className="text-gray-500 mt-2 font-medium italic">Welcome to your new HR AI Platform instance.</p>
+                    <h1 className="text-4xl font-black text-gray-900 tracking-tight">Create Organization</h1>
+                    <p className="text-gray-500 mt-2 font-medium italic">
+                        {organizationsCount > 0 
+                            ? `Your system has ${organizationsCount} organization(s). Create a new one to get started.`
+                            : 'Set up your first organization to get started.'
+                        }
+                    </p>
                 </div>
 
-                <Card title="Initialize Organization" subtitle="Set up your primary organization and HR administrator account.">
+                {organizationsCount > 0 && (
+                    <div className="mb-6">
+                        <Alert variant="info" title="Multi-Tenant System">
+                            This is a multi-tenant system. You can create multiple organizations, each with its own independent data.
+                        </Alert>
+                        <div className="mt-3 text-center">
+                            <button 
+                                onClick={() => router.push('/login')} 
+                                className="text-sm text-indigo-600 hover:text-indigo-800 underline"
+                            >
+                                Already have an account? Login here
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                <Card title="New Organization" subtitle="Create a new organization with an HR admin account.">
                     <FormProvider {...methods}>
                         <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-6">
-                            {error && <Alert variant="error" title="Setup Failed">{error}</Alert>}
+                            {error && <Alert variant="error" title="Error">{error}</Alert>}
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField
@@ -116,7 +131,7 @@ export default function SetupPage() {
                             </div>
 
                             <div className="border-t border-gray-100 pt-6 mt-6">
-                                <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-widest bg-gray-50 inline-block px-2 py-1 rounded">Primary HR Admin</h4>
+                                <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-widest bg-gray-50 inline-block px-2 py-1 rounded">HR Admin Account</h4>
                                 <div className="space-y-4">
                                     <FormField
                                         name="admin_email"
@@ -134,7 +149,7 @@ export default function SetupPage() {
                             </div>
 
                             <Button type="submit" className="w-full h-12 text-base shadow-lg hover:shadow-xl hover:-translate-y-0.5" loading={loading}>
-                                Initialize System
+                                Create Organization
                             </Button>
                         </form>
                     </FormProvider>
