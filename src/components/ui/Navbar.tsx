@@ -1,17 +1,21 @@
 import { useState, useEffect, useRef } from "react";
-import { Bell, Search, User, CheckCircle2, Info, AlertTriangle, AlertCircle, X } from "lucide-react";
+import { Bell, Search, User, CheckCircle2, Info, AlertTriangle, AlertCircle, X, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { notificationService, Notification } from "@/services/notificationService";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
+import { useAuthStore } from "@/store/authStore";
 
 export default function Navbar() {
     const router = useRouter();
+    const { user, logout } = useAuthStore();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isOpen, setIsOpen] = useState(false);
+    const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const userMenuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         fetchNotifications();
@@ -25,10 +29,18 @@ export default function Navbar() {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
+            if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+                setUserMenuOpen(false);
+            }
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
+
+    const handleLogout = () => {
+        logout();
+        router.push('/login');
+    };
 
     const fetchNotifications = async () => {
         try {
@@ -168,11 +180,46 @@ export default function Navbar() {
 
                 <div className="h-10 w-px bg-gray-200 dark:bg-gray-800 mx-2"></div>
 
-                <div className="flex items-center gap-3 p-1 pl-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <User size={18} className="text-primary" />
-                    </div>
-                    <span className="text-sm font-semibold hidden md:block dark:text-gray-200">رضوان</span>
+                <div className="h-10 w-px bg-gray-200 dark:bg-gray-800 mx-2"></div>
+
+                {/* User Menu */}
+                <div className="relative" ref={userMenuRef}>
+                    <button
+                        onClick={() => setUserMenuOpen(!userMenuOpen)}
+                        className="flex items-center gap-3 p-1 pl-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 hover:border-primary/50 transition-colors cursor-pointer"
+                    >
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <User size={18} className="text-primary" />
+                        </div>
+                        <span className="text-sm font-semibold hidden md:block dark:text-gray-200">
+                            {user?.full_name || user?.email?.split('@')[0] || 'User'}
+                        </span>
+                    </button>
+
+                    <AnimatePresence>
+                        {userMenuOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                className="absolute left-0 mt-2 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl overflow-hidden z-50"
+                                style={{ transformOrigin: "top left" }}
+                            >
+                                <div className="p-3 border-b border-gray-100 dark:border-gray-800">
+                                    <p className="text-sm font-bold dark:text-gray-200 truncate">{user?.full_name || 'User'}</p>
+                                    <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                                    <p className="text-xs text-primary font-medium mt-1 capitalize">{user?.role?.replace('_', ' ')}</p>
+                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full p-3 flex items-center gap-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-medium text-left"
+                                >
+                                    <LogOut size={16} />
+                                    تسجيل الخروج
+                                </button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
 
