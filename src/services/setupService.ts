@@ -15,5 +15,9 @@ export const setupService = {
     checkStatus: async () => {
         const response = await api.get('/setup/status');
         return response.data;
+    },
+    reset: async () => {
+        const response = await api.delete('/setup/reset');
+        return response.data;
     }
 };
