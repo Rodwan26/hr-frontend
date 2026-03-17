@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSidebar } from "./sidebar-context";
+import { useAuthStore } from "@/store/authStore";
 import {
     LayoutDashboard,
     Users,
@@ -26,9 +27,16 @@ function cn(...inputs: ClassValue[]) {
 export default function Sidebar() {
     const { collapsed, setCollapsed } = useSidebar();
     const pathname = usePathname();
+    const router = useRouter();
+    const { user, logout } = useAuthStore();
 
     const toggleTheme = () => {
         document.documentElement.classList.toggle("dark");
+    };
+
+    const handleLogout = () => {
+        logout();
+        router.push('/login');
     };
 
     const navItem = (href: string, label: string, Icon: any) => {
@@ -102,18 +110,30 @@ export default function Sidebar() {
 
                 {!collapsed ? (
                     <div className="bg-gray-800/50 p-3 rounded-2xl flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-sm font-bold">R</div>
-                        <div className="flex-1 overflow-hidden">
-                            <p className="text-sm font-semibold truncate">رضوان</p>
-                            <p className="text-xs text-gray-500 truncate">مدير النظام</p>
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-sm font-bold">
+                            {user?.full_name?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
                         </div>
-                        <button className="text-gray-400 hover:text-red-400">
+                        <div className="flex-1 overflow-hidden">
+                            <p className="text-sm font-semibold truncate">{user?.full_name || user?.email?.split('@')[0] || 'User'}</p>
+                            <p className="text-xs text-gray-500 truncate capitalize">{user?.role?.replace('_', ' ') || 'User'}</p>
+                        </div>
+                        <button 
+                            onClick={handleLogout}
+                            className="text-gray-400 hover:text-red-400 transition-colors"
+                            title="تسجيل الخروج"
+                        >
                             <LogOut size={16} />
                         </button>
                     </div>
                 ) : (
                     <div className="flex justify-center">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-sm font-bold">R</div>
+                        <button 
+                            onClick={handleLogout}
+                            className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-sm font-bold hover:bg-red-500 transition-colors"
+                            title="تسجيل الخروج"
+                        >
+                            <LogOut size={16} />
+                        </button>
                     </div>
                 )}
             </div>

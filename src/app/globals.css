@@ -6,10 +6,55 @@
   :root {
     --sidebar-width: 260px;
     --sidebar-collapsed-width: 80px;
+    
+    /* Light mode colors */
+    --background: 249 250 251;
+    --foreground: 15 23 42;
+    --card: 255 255 255;
+    --card-foreground: 15 23 42;
+    --popover: 255 255 255;
+    --popover-foreground: 15 23 42;
+    --primary: 37 99 235;
+    --primary-foreground: 255 255 255;
+    --secondary: 241 245 249;
+    --secondary-foreground: 15 23 42;
+    --muted: 241 245 249;
+    --muted-foreground: 100 116 139;
+    --accent: 241 245 249;
+    --accent-foreground: 15 23 42;
+    --destructive: 239 68 68;
+    --destructive-foreground: 255 255 255;
+    --border: 226 232 240;
+    --input: 226 232 240;
+    --ring: 37 99 235;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    /* Dark mode colors */
+    --background: 3 7 18;
+    --foreground: 248 250 252;
+    --card: 17 24 39;
+    --card-foreground: 248 250 252;
+    --popover: 17 24 39;
+    --popover-foreground: 248 250 252;
+    --primary: 37 99 235;
+    --primary-foreground: 255 255 255;
+    --secondary: 31 41 55;
+    --secondary-foreground: 248 250 252;
+    --muted: 31 41 55;
+    --muted-foreground: 148 163 184;
+    --accent: 31 41 55;
+    --accent-foreground: 248 250 252;
+    --destructive: 239 68 68;
+    --destructive-foreground: 255 255 255;
+    --border: 55 65 81;
+    --input: 55 65 81;
+    --ring: 37 99 235;
   }
 
   body {
-    @apply transition-colors duration-300;
+    @apply bg-[rgb(var(--background))] text-[rgb(var(--foreground))] transition-colors duration-300;
   }
 }
 
@@ -30,3 +75,148 @@
   @apply bg-gray-600;
 }
 
+/* Dark mode scrollbar */
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-gray-600/50;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
+}
+
+/* Card component styles */
+@layer components {
+  .card {
+    @apply bg-[rgb(var(--card))] text-[rgb(var(--card-foreground))] border border-[rgb(var(--border))] rounded-xl shadow-sm;
+  }
+  
+  .card-dark {
+    @apply dark:bg-[rgb(var(--card))] dark:text-[rgb(var(--card-foreground))] dark:border-[rgb(var(--border))];
+  }
+
+  /* Button variants */
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-primary/90;
+  }
+
+  /* Input styles */
+  .input {
+    @apply bg-[rgb(var(--background))] text-[rgb(var(--foreground))] border border-[rgb(var(--border))] rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:outline-none;
+  }
+  
+  .input-dark {
+    @apply dark:bg-[rgb(var(--background))] dark:text-[rgb(var(--foreground))] dark:border-[rgb(var(--border))];
+  }
+
+  /* Sidebar styles */
+  .sidebar {
+    @apply bg-slate-900 text-white;
+  }
+  
+  .sidebar-dark {
+    @apply dark:bg-slate-900 dark:text-white;
+  }
+
+  /* Navbar styles */
+  .navbar {
+    @apply bg-white border-b border-gray-200;
+  }
+  
+  .navbar-dark {
+    @apply dark:bg-[rgb(var(--card))] dark:border-[rgb(var(--border))];
+  }
+}
+
+/* Dark mode utility classes */
+@layer utilities {
+  .bg-background {
+    background-color: rgb(var(--background));
+  }
+  
+  .bg-card {
+    background-color: rgb(var(--card));
+  }
+  
+  .bg-popover {
+    background-color: rgb(var(--popover));
+  }
+  
+  .bg-primary {
+    background-color: rgb(var(--primary));
+  }
+  
+  .bg-secondary {
+    background-color: rgb(var(--secondary));
+  }
+  
+  .bg-muted {
+    background-color: rgb(var(--muted));
+  }
+  
+  .bg-accent {
+    background-color: rgb(var(--accent));
+  }
+  
+  .bg-destructive {
+    background-color: rgb(var(--destructive));
+  }
+  
+  .text-foreground {
+    color: rgb(var(--foreground));
+  }
+  
+  .text-card-foreground {
+    color: rgb(var(--card-foreground));
+  }
+  
+  .text-popover-foreground {
+    color: rgb(var(--popover-foreground));
+  }
+  
+  .text-primary-foreground {
+    color: rgb(var(--primary-foreground));
+  }
+  
+  .text-secondary-foreground {
+    color: rgb(var(--secondary-foreground));
+  }
+  
+  .text-muted-foreground {
+    color: rgb(var(--muted-foreground));
+  }
+  
+  .text-accent-foreground {
+    color: rgb(var(--accent-foreground));
+  }
+  
+  .text-destructive-foreground {
+    color: rgb(var(--destructive-foreground));
+  }
+  
+  .border-border {
+    border-color: rgb(var(--border));
+  }
+  
+  .border-input {
+    border-color: rgb(var(--input));
+  }
+  
+  .ring-ring {
+    --tw-ring-color: rgb(var(--ring));
+  }
+}
+
+/* Enhanced dark mode transitions */
+.dark {
+  color-scheme: dark;
+}
+
+.dark body,
+.dark #__next {
+  @apply bg-[rgb(var(--background))] text-[rgb(var(--foreground))];
+}
+
+/* Smooth color transitions */
+* {
+  @apply transition-colors duration-200;
+}

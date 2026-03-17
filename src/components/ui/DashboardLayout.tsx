@@ -23,14 +23,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
     if (isAuthPage || !isAuthenticated) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-black">
+            <div className="min-h-screen bg-[rgb(var(--background))] dark:bg-[rgb(var(--background))]">
                 {children}
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-black flex">
+        <div className="min-h-screen bg-[rgb(var(--background))] dark:bg-[rgb(var(--background))] flex">
             <Sidebar />
             <div
                 className="flex-1 p-6 transition-all duration-300 ease-in-out"
