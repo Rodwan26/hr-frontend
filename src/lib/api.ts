@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { config } from './config';
 import { useAuthStore } from '@/store/authStore';
 
@@ -8,16 +8,27 @@ import { useAuthStore } from '@/store/authStore';
  * - Automatic Bearer Token injection
  * - Unified error handling & Automatic 401 Refresh
  */
+
+// Determine timeout based on environment
+const isProduction = typeof window !== 'undefined' && 
+    (config.environment === 'production' || process.env.NODE_ENV === 'production');
+
 const api = axios.create({
     baseURL: `${config.apiBaseUrl}${config.apiPrefix}`,
-    timeout: 15000, // 15 seconds timeout
+    timeout: isProduction ? 30000 : 15000, // 30s for production, 15s for dev
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
+// Log API configuration on client-side
+if (typeof window !== 'undefined') {
+    console.log(`[API] Initialized with baseURL: ${config.apiBaseUrl}${config.apiPrefix}`);
+    console.log(`[API] Timeout: ${isProduction ? '30s' : '15s'}`);
+}
+
 let isRefreshing = false;
-let failedQueue: any[] = [];
+let failedQueue: Array<{resolve: (token: string | null) => void; reject: (error: any) => void}> = [];
 
 const processQueue = (error: any, token: string | null = null) => {
     failedQueue.forEach((prom) => {
@@ -46,7 +57,19 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
-        const originalRequest = error.config;
+        const axiosError = error as AxiosError;
+        const originalRequest = axiosError.config as any;
+        
+        // Log timeout errors for debugging
+        if (axiosError.code === 'ECONNABORTED') {
+            console.error(`[API] Request timeout: ${originalRequest?.url}`);
+        }
+        
+        // Log connection errors
+        if (!error.response && !axiosError.code) {
+            console.error(`[API] Network error - cannot reach backend at ${config.apiBaseUrl}`);
+        }
+        
         const errDetail = error.response?.data?.errors?.[0]?.msg || error.response?.data?.detail;
 
         // If it's a 401 and not a retry, attempt to refresh
