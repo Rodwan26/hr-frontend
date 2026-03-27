@@ -23,6 +23,7 @@ type SetupData = z.infer<typeof setupSchema>;
 
 export default function SetupPage() {
     const [error, setError] = useState<string | null>(null);
+    const [errorType, setErrorType] = useState<'duplicate_email' | 'duplicate_org' | 'other' | null>(null);
     const [loading, setLoading] = useState(false);
     const [checkingStatus, setCheckingStatus] = useState(true);
     const [organizationsCount, setOrganizationsCount] = useState(0);
@@ -56,6 +57,7 @@ export default function SetupPage() {
     const onSubmit = async (data: SetupData) => {
         setLoading(true);
         setError(null);
+        setErrorType(null);
         try {
             const payload = {
                 organization_name: data.organization_name,
@@ -68,7 +70,17 @@ export default function SetupPage() {
             router.push(`/login?message=Organization '${response.organization_name}' created successfully! Please login.`);
         } catch (err: any) {
             const detail = err.response?.data?.detail;
-            setError(detail || 'Failed to create organization. Please try again.');
+            
+            if (detail && detail.includes('email already exists')) {
+                setErrorType('duplicate_email');
+                setError('هذا البريد الإلكتروني مسجل مسبقاً في النظام.');
+            } else if (detail && detail.includes('organization with this name already exists')) {
+                setErrorType('duplicate_org');
+                setError('يوجد شركة بنفس الاسم. اختر اسم مختلف.');
+            } else {
+                setErrorType('other');
+                setError(detail || 'فشل إنشاء المؤسسة. يرجى المحاولة مرة أخرى.');
+            }
         } finally {
             setLoading(false);
         }
@@ -114,7 +126,30 @@ export default function SetupPage() {
                 <Card title="New Organization" subtitle="Create a new organization with an HR admin account.">
                     <FormProvider {...methods}>
                         <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-6">
-                            {error && <Alert variant="error" title="Error">{error}</Alert>}
+                            {error && (
+                                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0">
+                                            <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-red-800 font-medium">{error}</p>
+                                            
+                                            {errorType === 'duplicate_email' && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => router.push('/login')}
+                                                    className="mt-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium underline"
+                                                >
+                                                    هل تريد تسجيل الدخول بدلاً من ذلك؟
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField

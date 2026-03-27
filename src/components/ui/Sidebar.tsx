@@ -15,6 +15,7 @@ import {
     Settings,
     HelpCircle,
     LogOut,
+    ShieldCheckIcon,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { clsx, type ClassValue } from "clsx";
@@ -94,6 +95,7 @@ export default function Sidebar() {
 
                 <div className="my-4 border-t border-gray-800 pt-4">
                     {navItem("/settings", "الإعدادات", Settings)}
+                    {user?.role === 'SUPER_ADMIN' && navItem("/system-admin", "إدارة النظام", ShieldCheckIcon)}
                     {navItem("/help", "المساعدة", HelpCircle)}
                 </div>
             </nav>
