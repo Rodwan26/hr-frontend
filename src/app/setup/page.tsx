@@ -92,28 +92,52 @@ export default function SetupPage() {
         setError(null);
         setErrorType(null);
 
-        const detail = err.response?.data?.detail;
+        const responseData = err.response?.data;
         
-        // Handle structured error response (new format)
-        if (typeof detail === 'object' && detail !== null) {
-            const errorDetail: ErrorDetail = detail;
-            
-            switch (errorDetail.type) {
+        // Handle new structured error format (type at root level)
+        if (responseData?.type) {
+            switch (responseData.type) {
                 case 'EMAIL_EXISTS':
-                    setEmailError(errorDetail.message);
+                    setEmailError(responseData.message);
                     setErrorType('duplicate_email');
                     break;
                     
                 case 'SLUG_EXISTS':
-                    setSlugError(errorDetail.message);
-                    if (errorDetail.suggestions) {
-                        setSlugSuggestions(errorDetail.suggestions);
+                    setSlugError(responseData.message);
+                    if (responseData.suggestions) {
+                        setSlugSuggestions(responseData.suggestions);
                     }
                     setErrorType('duplicate_org');
                     break;
                     
                 default:
-                    setError(errorDetail.message || 'An unexpected error occurred. Please try again.');
+                    setError(responseData.message || 'An unexpected error occurred. Please try again.');
+                    setErrorType('other');
+            }
+            return;
+        }
+        
+        // Handle legacy format (detail wrapper)
+        const detail = responseData?.detail;
+        
+        // Handle structured error response (detail as object)
+        if (typeof detail === 'object' && detail !== null) {
+            switch (detail.type) {
+                case 'EMAIL_EXISTS':
+                    setEmailError(detail.message);
+                    setErrorType('duplicate_email');
+                    break;
+                    
+                case 'SLUG_EXISTS':
+                    setSlugError(detail.message);
+                    if (detail.suggestions) {
+                        setSlugSuggestions(detail.suggestions);
+                    }
+                    setErrorType('duplicate_org');
+                    break;
+                    
+                default:
+                    setError(detail.message || 'An unexpected error occurred. Please try again.');
                     setErrorType('other');
             }
             return;
