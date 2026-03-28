@@ -328,7 +328,6 @@ export default function SetupPage() {
                                 type="submit" 
                                 className="w-full h-12 text-base shadow-lg hover:shadow-xl hover:-translate-y-0.5" 
                                 loading={loading}
-                                disabled={!!emailError || !!slugError}
                             >
                                 Create Organization
                             </Button>
