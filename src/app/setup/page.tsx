@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -21,9 +21,23 @@ const setupSchema = z.object({
 
 type SetupData = z.infer<typeof setupSchema>;
 
+interface ErrorDetail {
+    type: string;
+    field?: string;
+    message: string;
+    suggestions?: string[];
+    action?: {
+        type: string;
+        url: string;
+    };
+}
+
 export default function SetupPage() {
     const [error, setError] = useState<string | null>(null);
     const [errorType, setErrorType] = useState<'duplicate_email' | 'duplicate_org' | 'other' | null>(null);
+    const [emailError, setEmailError] = useState<string | null>(null);
+    const [slugError, setSlugError] = useState<string | null>(null);
+    const [slugSuggestions, setSlugSuggestions] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [checkingStatus, setCheckingStatus] = useState(true);
     const [organizationsCount, setOrganizationsCount] = useState(0);
@@ -39,8 +53,24 @@ export default function SetupPage() {
         },
     });
 
+    // Auto-generate slug from organization name
+    useEffect(() => {
+        const subscription = methods.watch((value, { name }) => {
+            if (name === 'organization_name' && value.organization_name) {
+                const generatedSlug = value.organization_name
+                    .toLowerCase()
+                    .replace(/[^a-z0-9\s-]/g, '')
+                    .replace(/\s+/g, '-')
+                    .replace(/-+/g, '-')
+                    .substring(0, 30);
+                methods.setValue('organization_slug', generatedSlug, { shouldValidate: true });
+            }
+        });
+        return () => subscription.unsubscribe();
+    }, [methods]);
+
     // Check system status - allow viewing page always
-    React.useEffect(() => {
+    useEffect(() => {
         const checkStatus = async () => {
             try {
                 const status = await setupService.checkStatus();
@@ -54,10 +84,69 @@ export default function SetupPage() {
         checkStatus();
     }, []);
 
-    const onSubmit = async (data: SetupData) => {
-        setLoading(true);
+    const parseError = (err: any): void => {
+        // Clear previous field errors
+        setEmailError(null);
+        setSlugError(null);
+        setSlugSuggestions([]);
         setError(null);
         setErrorType(null);
+
+        const detail = err.response?.data?.detail;
+        
+        // Handle structured error response (new format)
+        if (typeof detail === 'object' && detail !== null) {
+            const errorDetail: ErrorDetail = detail;
+            
+            switch (errorDetail.type) {
+                case 'EMAIL_EXISTS':
+                    setEmailError(errorDetail.message);
+                    setErrorType('duplicate_email');
+                    break;
+                    
+                case 'SLUG_EXISTS':
+                    setSlugError(errorDetail.message);
+                    if (errorDetail.suggestions) {
+                        setSlugSuggestions(errorDetail.suggestions);
+                    }
+                    setErrorType('duplicate_org');
+                    break;
+                    
+                default:
+                    setError(errorDetail.message || 'An unexpected error occurred. Please try again.');
+                    setErrorType('other');
+            }
+            return;
+        }
+        
+        // Handle legacy string format (backward compatibility)
+        if (typeof detail === 'string') {
+            if (detail.toLowerCase().includes('email')) {
+                setEmailError('This email is already registered.');
+                setErrorType('duplicate_email');
+            } else if (detail.toLowerCase().includes('name') || detail.toLowerCase().includes('slug')) {
+                setSlugError('This organization name is already taken.');
+                setErrorType('duplicate_org');
+            } else {
+                setError(detail || 'Failed to create organization. Please try again.');
+                setErrorType('other');
+            }
+            return;
+        }
+        
+        // Fallback for network errors
+        setError('Network error. Please check your connection and try again.');
+        setErrorType('other');
+    };
+
+    const onSubmit = async (data: SetupData) => {
+        setLoading(true);
+        setEmailError(null);
+        setSlugError(null);
+        setSlugSuggestions([]);
+        setError(null);
+        setErrorType(null);
+        
         try {
             const payload = {
                 organization_name: data.organization_name,
@@ -69,21 +158,16 @@ export default function SetupPage() {
             const response = await setupService.initialize(payload);
             router.push(`/login?message=Organization '${response.organization_name}' created successfully! Please login.`);
         } catch (err: any) {
-            const detail = err.response?.data?.detail;
-            
-            if (detail && detail.includes('email already exists')) {
-                setErrorType('duplicate_email');
-                setError('هذا البريد الإلكتروني مسجل مسبقاً في النظام.');
-            } else if (detail && detail.includes('organization with this name already exists')) {
-                setErrorType('duplicate_org');
-                setError('يوجد شركة بنفس الاسم. اختر اسم مختلف.');
-            } else {
-                setErrorType('other');
-                setError(detail || 'فشل إنشاء المؤسسة. يرجى المحاولة مرة أخرى.');
-            }
+            parseError(err);
         } finally {
             setLoading(false);
         }
+    };
+
+    const applySlugSuggestion = (suggestion: string) => {
+        methods.setValue('organization_slug', suggestion, { shouldValidate: true });
+        setSlugError(null);
+        setSlugSuggestions([]);
     };
 
     if (checkingStatus) {
@@ -126,7 +210,8 @@ export default function SetupPage() {
                 <Card title="New Organization" subtitle="Create a new organization with an HR admin account.">
                     <FormProvider {...methods}>
                         <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-6">
-                            {error && (
+                            {/* Global Error Banner - Only for unexpected errors */}
+                            {error && errorType === 'other' && (
                                 <div className="bg-red-50 border border-red-200 rounded-xl p-4">
                                     <div className="flex items-start gap-3">
                                         <div className="flex-shrink-0">
@@ -136,16 +221,6 @@ export default function SetupPage() {
                                         </div>
                                         <div className="flex-1">
                                             <p className="text-red-800 font-medium">{error}</p>
-                                            
-                                            {errorType === 'duplicate_email' && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => router.push('/login')}
-                                                    className="mt-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium underline"
-                                                >
-                                                    هل تريد تسجيل الدخول بدلاً من ذلك؟
-                                                </button>
-                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -157,33 +232,80 @@ export default function SetupPage() {
                                     label="Organization Name"
                                     placeholder="e.g. Acme Corp"
                                 />
-                                <FormField
-                                    name="organization_slug"
-                                    label="Organization Slug"
-                                    placeholder="acme-corp"
-                                    helperText="Used in your unique URL"
-                                />
+                                
+                                {/* Organization Slug with Smart Suggestions */}
+                                <div className="space-y-1">
+                                    <FormField
+                                        name="organization_slug"
+                                        label="Organization Slug"
+                                        placeholder="acme-corp"
+                                        helperText="Used in your unique URL"
+                                        error={slugError}
+                                    />
+                                    
+                                    {/* Smart Suggestions */}
+                                    {slugSuggestions.length > 0 && slugError && (
+                                        <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                            <span className="text-xs text-gray-500">Try instead:</span>
+                                            <div className="flex gap-1 flex-wrap">
+                                                {slugSuggestions.slice(0, 4).map((suggestion) => (
+                                                    <button
+                                                        key={suggestion}
+                                                        type="button"
+                                                        onClick={() => applySlugSuggestion(suggestion)}
+                                                        className="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md hover:bg-indigo-100 border border-indigo-200 transition-colors"
+                                                    >
+                                                        {suggestion}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="border-t border-gray-100 pt-6 mt-6">
                                 <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-widest bg-gray-50 inline-block px-2 py-1 rounded">HR Admin Account</h4>
                                 <div className="space-y-4">
-                                    <FormField
-                                        name="admin_email"
-                                        label="Admin Email"
-                                        type="email"
-                                        placeholder="admin@company.com"
-                                    />
+                                    {/* Email Field with Login Action */}
+                                    <div className="relative">
+                                        <FormField
+                                            name="admin_email"
+                                            label="Admin Email"
+                                            type="email"
+                                            placeholder="admin@company.com"
+                                            error={emailError}
+                                        />
+                                        
+                                        {/* Quick Login Action */}
+                                        {emailError && (
+                                            <div className="mt-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => router.push('/login')}
+                                                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium underline"
+                                                >
+                                                    Login instead?
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                    
                                     <FormField
                                         name="admin_password"
                                         label="Admin Password"
                                         type="password"
-                                        placeholder="••••••••"
+                                        placeholder="Minimum 8 characters"
                                     />
                                 </div>
                             </div>
 
-                            <Button type="submit" className="w-full h-12 text-base shadow-lg hover:shadow-xl hover:-translate-y-0.5" loading={loading}>
+                            <Button 
+                                type="submit" 
+                                className="w-full h-12 text-base shadow-lg hover:shadow-xl hover:-translate-y-0.5" 
+                                loading={loading}
+                                disabled={!!emailError || !!slugError}
+                            >
                                 Create Organization
                             </Button>
                         </form>
