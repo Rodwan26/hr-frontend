@@ -87,16 +87,16 @@ export default function Sidebar() {
 
             {/* Navigation */}
             <nav className="flex flex-col gap-2 p-4 flex-1 overflow-y-auto custom-scrollbar">
-                {navItem("/dashboard", "الرئيسية", LayoutDashboard)}
-                {navItem("/recruitment", "التوظيف", Users)}
-                {navItem("/leave", "الإجازات", Calendar)}
-                {navItem("/documents", "المستندات", FileText)}
-                {navItem("/profile", "الملف الشخصي", Users)}
+                {navItem("/dashboard", "Dashboard", LayoutDashboard)}
+                {navItem("/recruitment", "Recruitment", Users)}
+                {navItem("/leave", "Leave", Calendar)}
+                {navItem("/documents", "Documents", FileText)}
+                {navItem("/profile", "Profile", Users)}
 
                 <div className="my-4 border-t border-gray-800 pt-4">
-                    {navItem("/settings", "الإعدادات", Settings)}
-                    {user?.role === 'SUPER_ADMIN' && navItem("/system-admin", "إدارة النظام", ShieldCheckIcon)}
-                    {navItem("/help", "المساعدة", HelpCircle)}
+                    {navItem("/settings", "Settings", Settings)}
+                    {user?.role === 'SUPER_ADMIN' && navItem("/system-admin", "System Admin", ShieldCheckIcon)}
+                    {navItem("/help", "Help", HelpCircle)}
                 </div>
             </nav>
 
@@ -107,7 +107,7 @@ export default function Sidebar() {
                     className="flex items-center gap-4 w-full hover:bg-gray-800 p-2 rounded-xl transition-colors text-gray-400 hover:text-white"
                 >
                     <Moon size={20} />
-                    {!collapsed && <span className="text-sm font-medium">الوضع الليلي</span>}
+                    {!collapsed && <span className="text-sm font-medium">Dark Mode</span>}
                 </button>
 
                 {!collapsed ? (
@@ -122,7 +122,7 @@ export default function Sidebar() {
                         <button 
                             onClick={handleLogout}
                             className="text-gray-400 hover:text-red-400 transition-colors"
-                            title="تسجيل الخروج"
+                            title="Logout"
                         >
                             <LogOut size={16} />
                         </button>
@@ -132,7 +132,7 @@ export default function Sidebar() {
                         <button 
                             onClick={handleLogout}
                             className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-sm font-bold hover:bg-red-500 transition-colors"
-                            title="تسجيل الخروج"
+                            title="Logout"
                         >
                             <LogOut size={16} />
                         </button>
