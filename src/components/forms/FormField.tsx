@@ -10,25 +10,28 @@ interface FormFieldProps {
     label: string;
     type?: string;
     placeholder?: string;
-    options?: { label: string; value: string | number }[]; // For select type
+    options?: { label: string; value: string | number }[];
     helperText?: string;
+    error?: string | null;
 }
 
-export const FormField = ({ name, label, type = 'text', placeholder, options, helperText }: FormFieldProps) => {
+export const FormField = ({ name, label, type = 'text', placeholder, options, helperText, error: externalError }: FormFieldProps) => {
     const { control } = useFormContext();
 
     return (
         <Controller
             name={name}
             control={control}
-            render={({ field, fieldState: { error } }) => {
+            render={({ field, fieldState: { error: formError } }) => {
+                const displayError = externalError || formError?.message;
+                
                 if (type === 'select' && options) {
                     return (
                         <Select
                             {...field}
                             label={label}
                             options={options}
-                            error={error?.message}
+                            error={displayError}
                         />
                     );
                 }
@@ -39,7 +42,7 @@ export const FormField = ({ name, label, type = 'text', placeholder, options, he
                         type={type}
                         label={label}
                         placeholder={placeholder}
-                        error={error?.message}
+                        error={displayError}
                         helperText={helperText}
                     />
                 );
